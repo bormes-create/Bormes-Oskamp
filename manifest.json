@@ -1,0 +1,14 @@
+{
+  "name": "Snuffel de Snoepkat",
+  "short_name": "Snoepkat",
+  "description": "Speel als kat en zoek de verstopte snoepjes in huis!",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#2b1d3a",
+  "theme_color": "#2b1d3a",
+  "lang": "nl",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

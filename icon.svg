@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="110" fill="#2b1d3a"/>
+  <circle cx="256" cy="290" r="150" fill="#f29b38"/>
+  <polygon points="126,210 140,60 240,160" fill="#f29b38"/>
+  <polygon points="386,210 372,60 272,160" fill="#f29b38"/>
+  <polygon points="150,180 155,100 210,160" fill="#f7c6c6"/>
+  <polygon points="362,180 357,100 302,160" fill="#f7c6c6"/>
+  <ellipse cx="200" cy="280" rx="22" ry="30" fill="#2b1d3a"/>
+  <ellipse cx="312" cy="280" rx="22" ry="30" fill="#2b1d3a"/>
+  <circle cx="207" cy="270" r="8" fill="#fff"/>
+  <circle cx="319" cy="270" r="8" fill="#fff"/>
+  <polygon points="240,325 272,325 256,345" fill="#e86a8a"/>
+  <path d="M256 345 q-20 25 -40 10 M256 345 q20 25 40 10" stroke="#2b1d3a" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <g stroke="#2b1d3a" stroke-width="5" stroke-linecap="round">
+    <line x1="170" y1="320" x2="90" y2="305"/><line x1="170" y1="335" x2="90" y2="345"/>
+    <line x1="342" y1="320" x2="422" y2="305"/><line x1="342" y1="335" x2="422" y2="345"/>
+  </g>
+  <g transform="translate(400 420) rotate(-25)">
+    <rect x="-38" y="-22" width="76" height="44" rx="22" fill="#ff5fa2"/>
+    <polygon points="-38,0 -70,-24 -70,24" fill="#ff5fa2"/>
+    <polygon points="38,0 70,-24 70,24" fill="#ff5fa2"/>
+    <path d="M-20 -20 L-5 20 M5 -20 L20 20" stroke="#fff" stroke-width="7"/>
+  </g>
+</svg>

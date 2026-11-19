@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Snuffel de Snoepkat</title>
+<meta name="theme-color" content="#2b1d3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Snoepkat">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2b1d3a;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; color: #fff;
+    user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; touch-action: none; }
+
+  #hud { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px;
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center;
+    pointer-events: none; z-index: 5; }
+  .pill { background: rgba(43,29,58,.82); border: 2px solid rgba(255,255,255,.25);
+    border-radius: 999px; padding: 5px 12px; font-size: 16px; white-space: nowrap; }
+  .pill b { font-size: 18px; }
+  .pill.warn { background: #c0392b; animation: pulse .5s infinite alternate; }
+  @media (max-width: 480px) {
+    #hud { gap: 4px; left: 4px; right: 4px; }
+    .pill { padding: 4px 8px; font-size: 13px; } .pill b { font-size: 15px; }
+    .iconbtn { width: 32px; height: 32px; font-size: 15px; }
+    #nose { top: calc(max(8px, env(safe-area-inset-top)) + 40px); }
+  }
+  @keyframes pulse { to { transform: scale(1.12); } }
+  .iconbtn { pointer-events: auto; background: rgba(43,29,58,.82); border: 2px solid rgba(255,255,255,.25);
+    color: #fff; border-radius: 50%; width: 38px; height: 38px; font-size: 18px; cursor: pointer; }
+
+  #nose { position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 46px); left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; background: rgba(43,29,58,.82);
+    border: 2px solid rgba(255,255,255,.25); border-radius: 999px; padding: 4px 12px;
+    pointer-events: none; z-index: 5; font-size: 15px; }
+  #nose .bar { width: 120px; height: 12px; border-radius: 6px; overflow: hidden;
+    background: linear-gradient(90deg, #4fa3ff, #9b6bff, #ff9f43, #ff3b3b); position: relative; }
+  #noseCover { position: absolute; top: 0; right: 0; bottom: 0; background: #3d2c50; transition: width .2s; }
+  #noseText { min-width: 70px; font-weight: bold; }
+
+  #btnSearch { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom));
+    width: 104px; height: 104px; border-radius: 50%; border: 4px solid #fff;
+    background: radial-gradient(circle at 35% 30%, #ffb3d1, #ff5fa2 60%, #d63c80);
+    color: #fff; font-size: 40px; line-height: 1; z-index: 6; cursor: pointer;
+    box-shadow: 0 6px 0 #9c2a5d, 0 10px 20px rgba(0,0,0,.4); display: none; }
+  #btnSearch span { display: block; font-size: 15px; font-weight: bold; margin-top: 2px; }
+  #btnSearch:active { transform: translateY(4px); box-shadow: 0 2px 0 #9c2a5d; }
+  #btnSearch.ready { animation: glow .6s infinite alternate; }
+  @keyframes glow { to { box-shadow: 0 6px 0 #9c2a5d, 0 0 30px 8px #ffe066; } }
+
+  .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(25,15,35,.72); z-index: 10; padding: 16px; touch-action: auto; }
+  .overlay.show { display: flex; }
+  .card { background: linear-gradient(160deg, #fff7ec, #ffe3f0); color: #3b2550; border-radius: 26px;
+    padding: 22px 24px; max-width: 460px; width: 100%; text-align: center;
+    box-shadow: 0 12px 0 #c9739d, 0 20px 40px rgba(0,0,0,.5); max-height: 92vh; overflow-y: auto; }
+  .card h1 { margin: 4px 0 6px; font-size: 32px; color: #d63c80; text-shadow: 2px 2px 0 #ffd1e6; }
+  .card h2 { margin: 4px 0 10px; font-size: 28px; color: #d63c80; }
+  .card p { margin: 8px 0; font-size: 17px; line-height: 1.35; }
+  .big { font-size: 64px; line-height: 1.1; }
+  .rules { text-align: left; background: rgba(255,255,255,.7); border-radius: 16px; padding: 10px 14px;
+    margin: 12px 0; font-size: 15px; line-height: 1.5; }
+  .btn { display: inline-block; margin: 8px 6px 2px; padding: 12px 28px; font-size: 21px; font-weight: bold;
+    border: none; border-radius: 999px; background: #ff5fa2; color: #fff; cursor: pointer;
+    box-shadow: 0 5px 0 #b33572; font-family: inherit; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b33572; }
+  .btn.alt { background: #8e6bbf; box-shadow: 0 5px 0 #5d4285; }
+  .hs { font-size: 15px; opacity: .8; }
+  .bounce { display: inline-block; animation: bob 1.2s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-10px) rotate(-6deg); } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" style="display:none">
+  <div class="pill">Level <b id="hLevel">1</b></div>
+  <div class="pill">🍬 <b id="hCandy">0/3</b></div>
+  <div class="pill" id="timePill">⏱️ <b id="hTime">60</b></div>
+  <div class="pill">⭐ <b id="hScore">0</b></div>
+  <button class="iconbtn" id="btnMute" title="Geluid aan/uit">🔊</button>
+  <button class="iconbtn" id="btnPause" title="Pauze">⏸️</button>
+</div>
+<div id="nose" style="display:none">
+  <span>👃</span>
+  <div class="bar"><div id="noseCover"></div></div>
+  <span id="noseText">Koud</span>
+</div>
+<button id="btnSearch">🐾<span>Snuffel</span></button>
+
+<div class="overlay show" id="menu">
+  <div class="card">
+    <div class="big"><span class="bounce">🐱</span>🍬</div>
+    <h1>Snuffel de Snoepkat</h1>
+    <p>Iemand heeft overal in huis snoepjes verstopt! Help Snuffel ze allemaal te vinden voordat de tijd op is.</p>
+    <div class="rules">
+      🕹️ <b>Lopen:</b> pijltjes / WASD, of sleep met je vinger<br>
+      🐾 <b>Snuffelen:</b> spatiebalk of de Snuffel-knop bij een voorwerp<br>
+      👃 <b>Neus-meter:</b> hoe heter, hoe dichter bij snoep!<br>
+      ⏱️ Klokje = extra tijd &nbsp; 🕷️ Spin = tijd kwijt<br>
+      🤖 Pas op voor de stofzuigrobot!
+    </div>
+    <button class="btn" id="btnStart">Spelen! ▶</button>
+    <p class="hs" id="menuHs"></p>
+  </div>
+</div>
+
+<div class="overlay" id="levelDone">
+  <div class="card">
+    <div class="big">🎉😺🎉</div>
+    <h2 id="ldTitle">Level 1 klaar!</h2>
+    <p id="ldCandies" style="font-size:30px"></p>
+    <p id="ldText"></p>
+    <button class="btn" id="btnNext">Volgend level ▶</button>
+  </div>
+</div>
+
+<div class="overlay" id="gameOver">
+  <div class="card">
+    <div class="big">⏰😿</div>
+    <h2>De tijd is op!</h2>
+    <p id="goText"></p>
+    <p class="hs" id="goHs"></p>
+    <button class="btn" id="btnRetry">Opnieuw 🔄</button>
+    <button class="btn alt" id="btnMenu">Menu</button>
+  </div>
+</div>
+
+<div class="overlay" id="pause">
+  <div class="card">
+    <div class="big">😴</div>
+    <h2>Pauze</h2>
+    <p>Snuffel doet even een dutje...</p>
+    <button class="btn" id="btnResume">Doorgaan ▶</button>
+    <button class="btn alt" id="btnQuit">Stoppen</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ====================================================================
+//  Snuffel de Snoepkat - een spel waarin je als kat snoepjes zoekt
+// ====================================================================
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const $ = id => document.getElementById(id);
+
+const W = 1400, H = 1000;           // grootte van het huis (wereld-eenheden)
+const WALL = 20;
+const CAT_R = 16;
+const CAT_SPEED = 230;
+const REACH = 30;                   // hoe dichtbij je moet zijn om te snuffelen
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const CANDIES = ['🍬', '🍭', '🍫', '🍩', '🧁', '🍪', '🍰', '🍡'];
+const EMPTY_LINES = ['Niks...', 'Alleen stof!', 'Leeg!', 'Hmm, nee...', 'Een oude sok 🧦', 'Een muntje 🪙', 'Een kruimel...', 'Een veertje 🪶'];
+
+// ------------------------------- Huis --------------------------------
+const walls = [
+  // buitenmuren
+  { x: 0, y: 0, w: W, h: WALL }, { x: 0, y: H - WALL, w: W, h: WALL },
+  { x: 0, y: 0, w: WALL, h: H }, { x: W - WALL, y: 0, w: WALL, h: H },
+  // verticale binnenmuur (deuren bij y 180-300 en 680-800)
+  { x: 690, y: 0, w: WALL, h: 180 }, { x: 690, y: 300, w: WALL, h: 380 }, { x: 690, y: 800, w: WALL, h: 200 },
+  // horizontale binnenmuur (deuren bij x 260-380 en 1000-1120)
+  { x: 0, y: 490, w: 260, h: WALL }, { x: 380, y: 490, w: 620, h: WALL }, { x: 1120, y: 490, w: 280, h: WALL },
+];
+
+const OBJECTS = [
+  // woonkamer
+  { label: 'de bank', e: '🛋️', x: 60, y: 50, w: 200, h: 80, c: '#7d5ba6' },
+  { label: 'het tv-meubel', e: '📺', x: 400, y: 40, w: 160, h: 55, c: '#5a3e2b' },
+  { label: 'de plant', e: '🪴', x: 610, y: 40, w: 55, h: 55, c: '#4c9a5b' },
+  { label: 'de boekenkast', e: '📚', x: 40, y: 230, w: 60, h: 170, c: '#6b4a2f' },
+  { label: 'de salontafel', e: '☕', x: 230, y: 230, w: 140, h: 75, c: '#a0703c' },
+  { label: 'de wolmand', e: '🧶', x: 570, y: 380, w: 65, h: 60, c: '#d98aa6' },
+  { label: 'de gitaar', e: '🎸', x: 140, y: 410, w: 60, h: 55, c: '#c77d3a' },
+  // keuken
+  { label: 'het aanrecht', e: '🧽', x: 860, y: 40, w: 190, h: 60, c: '#9aa5ad' },
+  { label: 'het fornuis', e: '🍳', x: 1080, y: 40, w: 110, h: 65, c: '#4a4a4a' },
+  { label: 'de koelkast', e: '🧊', x: 1290, y: 40, w: 75, h: 115, c: '#dfe7ee' },
+  { label: 'de keukentafel', e: '🍽️', x: 990, y: 230, w: 170, h: 100, c: '#c08a4a' },
+  { label: 'de stoel', e: '🪑', x: 925, y: 255, w: 45, h: 50, c: '#b07a3e' },
+  { label: 'de prullenbak', e: '🗑️', x: 1300, y: 390, w: 55, h: 65, c: '#6c7a89' },
+  { label: 'de voerbak', e: '🐟', x: 745, y: 410, w: 60, h: 45, c: '#4aa3df' },
+  // slaapkamer
+  { label: 'het bed', e: '🛏️', x: 50, y: 560, w: 170, h: 220, c: '#e07a7a' },
+  { label: 'het nachtkastje', e: '💡', x: 240, y: 560, w: 60, h: 50, c: '#8b5a2b' },
+  { label: 'de kledingkast', e: '👕', x: 480, y: 535, w: 170, h: 60, c: '#8a6a4a' },
+  { label: 'de speelgoedkist', e: '🧸', x: 500, y: 860, w: 110, h: 75, c: '#e3a33b' },
+  { label: 'de schoenen', e: '👟', x: 60, y: 880, w: 75, h: 55, c: '#7fb3d5' },
+  { label: 'de koffer', e: '🧳', x: 290, y: 850, w: 85, h: 80, c: '#5577aa' },
+  // badkamer
+  { label: 'het bad', e: '🛁', x: 1170, y: 550, w: 190, h: 105, c: '#f4f8fb' },
+  { label: 'de wastafel', e: '🧼', x: 870, y: 535, w: 110, h: 55, c: '#e8eef2' },
+  { label: 'de wc', e: '🚽', x: 760, y: 870, w: 60, h: 75, c: '#f4f8fb' },
+  { label: 'de wasmand', e: '🧺', x: 1280, y: 860, w: 75, h: 75, c: '#c9a46a' },
+  { label: 'het handdoekenrek', e: '🧻', x: 1000, y: 900, w: 100, h: 45, c: '#9fd3c7' },
+  { label: 'de badeendjes', e: '🦆', x: 760, y: 560, w: 55, h: 55, c: '#ffd84d' },
+];
+const solids = walls.concat(OBJECTS);
+
+// ------------------------------ Helpers ------------------------------
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function rrect(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = c => clamp(Math.round(c + amt), 0, 255);
+  return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
+function distToRect(px, py, r) {
+  const cx = clamp(px, r.x, r.x + r.w), cy = clamp(py, r.y, r.y + r.h);
+  return Math.hypot(px - cx, py - cy);
+}
+// Duw een cirkel uit alle vaste dingen. Geeft true terug bij een botsing.
+function resolve(e, rad) {
+  let hit = false;
+  for (const s of solids) {
+    const cx = clamp(e.x, s.x, s.x + s.w), cy = clamp(e.y, s.y, s.y + s.h);
+    let dx = e.x - cx, dy = e.y - cy;
+    const d2 = dx * dx + dy * dy;
+    if (d2 >= rad * rad) continue;
+    hit = true;
+    if (d2 > 0.0001) {
+      const d = Math.sqrt(d2);
+      e.x = cx + dx / d * rad; e.y = cy + dy / d * rad;
+    } else { // middelpunt zit in de rechthoek: kortste weg naar buiten
+      const l = e.x - s.x, r = s.x + s.w - e.x, t = e.y - s.y, b = s.y + s.h - e.y;
+      const m = Math.min(l, r, t, b);
+      if (m === l) e.x = s.x - rad; else if (m === r) e.x = s.x + s.w + rad;
+      else if (m === t) e.y = s.y - rad; else e.y = s.y + s.h + rad;
+    }
+  }
+  return hit;
+}
+
+// ------------------------------- Geluid ------------------------------
+let actx = null, muted = localStorage.getItem('snoepkat-muted') === '1';
+function ac() {
+  if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; actx = new AC(); }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, dur, type = 'sine', vol = 0.15, when = 0, slideTo = null) {
+  if (muted) return; const a = ac(); if (!a) return;
+  const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+function noise(dur, freq, vol = 0.2, type = 'bandpass') {
+  if (muted) return; const a = ac(); if (!a) return;
+  const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  src.buffer = buf; f.type = type; f.frequency.value = freq; g.gain.value = vol;
+  src.connect(f).connect(g).connect(a.destination); src.start();
+}
+const sfx = {
+  candy() { [660, 880, 1100, 1320].forEach((f, i) => tone(f, 0.18, 'triangle', 0.14, i * 0.07)); },
+  empty() { tone(220, 0.18, 'sine', 0.14, 0, 110); },
+  rustle() { noise(0.35, 1800, 0.25); },
+  clock() { tone(1300, 0.07, 'square', 0.05); tone(950, 0.07, 'square', 0.05, 0.12); tone(1500, 0.25, 'triangle', 0.1, 0.25); },
+  hiss() { noise(0.45, 4000, 0.3, 'highpass'); },
+  tick() { tone(1000, 0.04, 'square', 0.03); },
+  meow() {
+    if (muted) return; const a = ac(); if (!a) return;
+    const t = a.currentTime, o = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(420, t);
+    o.frequency.linearRampToValueAtTime(780, t + 0.15); o.frequency.linearRampToValueAtTime(380, t + 0.45);
+    f.type = 'bandpass'; f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(1600, t + 0.15);
+    f.frequency.linearRampToValueAtTime(700, t + 0.45); f.Q.value = 3;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(f).connect(g).connect(a.destination); o.start(t); o.stop(t + 0.55);
+  },
+  win() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.15, i * 0.12)); },
+  lose() { [523, 466, 415, 349].forEach((f, i) => tone(f, 0.3, 'triangle', 0.15, i * 0.2)); },
+};
+
+// --------------------------- Vloer tekenen ---------------------------
+const floor = document.createElement('canvas');
+floor.width = W; floor.height = H;
+(function drawFloor() {
+  const f = floor.getContext('2d');
+  // woonkamer: houten planken
+  f.fillStyle = '#c9965f'; f.fillRect(0, 0, 700, 500);
+  for (let y = 0; y < 500; y += 32) {
+    f.fillStyle = (y / 32) % 2 ? '#c38f58' : '#cf9d66'; f.fillRect(0, y, 700, 32);
+    f.fillStyle = 'rgba(90,55,25,.35)'; f.fillRect(0, y, 700, 2);
+    for (let x = ((y / 32) % 3) * 70; x < 700; x += 210) f.fillRect(x, y, 2, 32);
+  }
+  // keuken: tegels
+  for (let y = 0; y < 500; y += 50) for (let x = 700; x < W; x += 50) {
+    f.fillStyle = ((x + y) / 50) % 2 ? '#d9d2c3' : '#f3efe6'; f.fillRect(x, y, 50, 50);
+  }
+  // slaapkamer: tapijt
+  f.fillStyle = '#9fb8dc'; f.fillRect(0, 500, 700, 500);
+  f.fillStyle = 'rgba(255,255,255,.18)';
+  for (let y = 515; y < H; y += 24) for (let x = 10 + (y % 48 ? 12 : 0); x < 700; x += 24) { f.beginPath(); f.arc(x, y, 2, 0, 7); f.fill(); }
+  // badkamer: kleine tegeltjes
+  f.fillStyle = '#d6f0f3'; f.fillRect(700, 500, 700, 500);
+  f.strokeStyle = '#b3dbe1'; f.lineWidth = 2;
+  for (let y = 500; y <= H; y += 30) { f.beginPath(); f.moveTo(700, y); f.lineTo(W, y); f.stroke(); }
+  for (let x = 700; x <= W; x += 30) { f.beginPath(); f.moveTo(x, 500); f.lineTo(x, H); f.stroke(); }
+  // kleden
+  f.fillStyle = '#b8434f'; f.beginPath(); f.ellipse(300, 300, 165, 95, 0, 0, 7); f.fill();
+  f.strokeStyle = '#f2c14e'; f.lineWidth = 6; f.beginPath(); f.ellipse(300, 300, 145, 78, 0, 0, 7); f.stroke();
+  f.fillStyle = '#f2e5c9'; f.fillRect(260, 640, 300, 170);
+  f.strokeStyle = '#d98aa6'; f.lineWidth = 8; f.strokeRect(275, 655, 270, 140);
+  f.fillStyle = '#7ec4cf'; rr(f, 1180, 680, 140, 60, 25); f.fill();
+  f.fillStyle = '#8a5a3c'; rr(f, 1000, 400, 120, 60, 12); f.fill();
+  f.fillStyle = '#a8734f'; f.font = 'bold 18px sans-serif'; f.textAlign = 'center'; f.textBaseline = 'middle';
+  f.fillText('WELKOM', 1060, 430);
+  // kamernamen
+  f.font = 'bold 34px "Trebuchet MS",sans-serif'; f.fillStyle = 'rgba(0,0,0,.12)';
+  f.fillText('Woonkamer', 470, 175); f.fillText('Keuken', 860, 175);
+  f.fillText('Slaapkamer', 470, 950); f.fillText('Badkamer', 1050, 780);
+  // muren
+  for (const w of walls) {
+    f.fillStyle = '#5b4636'; f.fillRect(w.x, w.y, w.w, w.h);
+    f.fillStyle = '#7a604b'; f.fillRect(w.x, w.y, w.w, 5);
+  }
+  // deurdrempels
+  f.fillStyle = '#9b7653';
+  f.fillRect(692, 180, 16, 120); f.fillRect(692, 680, 16, 120); f.fillRect(260, 492, 120, 16); f.fillRect(1000, 492, 120, 16);
+  function rr(c, x, y, w, h, r) {
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+})();
+
+// ----------------------------- Spelstatus ----------------------------
+let state = 'menu';
+let level = 1, score = 0, found = 0, total = 0, timeLeft = 60, lastTick = 0;
+let highscore = +localStorage.getItem('snoepkat-highscore') || 0;
+let levelEndTimer = -1, time = 0;
+const cat = { x: 470, y: 340, face: 1, moving: false, searching: 0, target: null, stun: 0, hurt: 0, kx: 0, ky: 0, near: null, carry: 0, blink: 3 };
+let vacuums = [], floats = [], particles = [];
+const view = { x: 0, y: 0, s: 1 };
+
+function startGame() { score = 0; startLevel(1); }
+
+function startLevel(n) {
+  level = n;
+  for (const o of OBJECTS) { o.content = null; o.searched = false; o.shake = 0; o.result = null; }
+  const pool = shuffle(OBJECTS.slice());
+  total = Math.min(2 + n, 10);
+  let k = 0;
+  for (let i = 0; i < total; i++) pool[k++].content = { type: 'candy', e: pick(CANDIES) };
+  pool[k++].content = { type: 'clock' };
+  const spiders = n >= 2 ? Math.min(1 + Math.floor((n - 2) / 2), 4) : 0;
+  for (let i = 0; i < spiders; i++) pool[k++].content = { type: 'spider' };
+  found = 0;
+  timeLeft = 40 + total * 12;
+  lastTick = Math.ceil(timeLeft);
+  Object.assign(cat, { x: 470, y: 340, face: 1, searching: 0, target: null, stun: 0, hurt: 0, kx: 0, ky: 0, carry: 0 });
+  vacuums = [];
+  const nv = n >= 6 ? 2 : n >= 3 ? 1 : 0;
+  const spots = [[1240, 260], [400, 720]];
+  for (let i = 0; i < nv; i++) {
+    const a = rand(0, Math.PI * 2);
+    vacuums.push({ x: spots[i][0], y: spots[i][1], a, spd: Math.min(80 + n * 10, 170), spin: 0 });
+  }
+  floats = []; particles = []; levelEndTimer = -1;
+  state = 'playing';
+  showOverlay(null);
+  $('hud').style.display = 'flex'; $('nose').style.display = 'flex'; $('btnSearch').style.display = 'block';
+  addFloat(`Level ${n}: vind ${total} snoepjes!`, cat.x, cat.y - 50, '#fff', 26, 2.5);
+  sfx.meow();
+  updateHud();
+}
+
+function showOverlay(id) {
+  for (const o of ['menu', 'levelDone', 'gameOver', 'pause']) $(o).classList.toggle('show', o === id);
+}
+
+function toMenu() {
+  state = 'menu'; showOverlay('menu');
+  $('hud').style.display = 'none'; $('nose').style.display = 'none'; $('btnSearch').style.display = 'none';
+  $('menuHs').textContent = highscore ? `🏆 Hoogste score: ${highscore}` : '';
+}
+
+function addFloat(text, x, y, color = '#fff', size = 22, life = 1.6) {
+  floats.push({ text, x, y, color, size, life, max: life });
+}
+function burst(x, y, n, colors) {
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, Math.PI * 2), s = rand(80, 320);
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 120, life: rand(0.6, 1.2), c: pick(colors), r: rand(3, 6) });
+  }
+}
+
+// --------------------------- Snuffelen -------------------------------
+function nearestObject() {
+  let best = null, bd = Infinity;
+  for (const o of OBJECTS) {
+    const d = distToRect(cat.x, cat.y, o);
+    if (d < CAT_R + REACH && d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
+
+function trySearch() {
+  if (state !== 'playing' || cat.searching > 0 || cat.stun > 0) return;
+  ac();
+  const o = cat.near;
+  if (!o) { addFloat('Ga naast een voorwerp staan 🐾', cat.x, cat.y - 40, '#fff', 18, 1.2); sfx.meow(); return; }
+  if (o.searched) { addFloat('Hier heb je al gezocht!', o.x + o.w / 2, o.y - 10, '#ddd', 18, 1.2); return; }
+  cat.searching = 0.6; cat.target = o; o.shake = 0.6;
+  cat.face = (o.x + o.w / 2) >= cat.x ? 1 : -1;
+  sfx.rustle();
+}
+
+function reveal(o) {
+  o.searched = true;
+  const cx = o.x + o.w / 2, cy = o.y;
+  const c = o.content;
+  if (c && c.type === 'candy') {
+    o.result = 'candy'; found++; score += 100 * level;
+    addFloat(c.e, cx, cy, '#fff', 54, 1.6);
+    addFloat(`+${100 * level}`, cx, cy - 50, '#ffe066', 24, 1.4);
+    burst(cx, cy + 10, 30, ['#ff5fa2', '#ffe066', '#7ee0ff', '#b38bff', '#fff']);
+    cat.carry = 1.2;
+    sfx.candy();
+    if (found >= total) { levelEndTimer = 1.3; addFloat('Alles gevonden! 🎉', cat.x, cat.y - 70, '#ffe066', 28, 2); }
+  } else if (c && c.type === 'clock') {
+    o.result = 'clock'; timeLeft += 10;
+    addFloat('⏱️ +10 sec!', cx, cy, '#7effa1', 28, 1.6);
+    burst(cx, cy + 10, 16, ['#7effa1', '#fff']);
+    sfx.clock();
+  } else if (c && c.type === 'spider') {
+    o.result = 'spider'; timeLeft = Math.max(0, timeLeft - 5);
+    addFloat('🕷️', cx, cy, '#fff', 48, 1.4);
+    addFloat('Bah! -5 sec', cx, cy - 45, '#ff7b7b', 22, 1.4);
+    cat.stun = 0.7; sfx.hiss();
+  } else {
+    o.result = 'empty';
+    addFloat(pick(EMPTY_LINES), cx, cy, '#eee', 20, 1.3);
+    sfx.empty();
+  }
+  updateHud();
+}
+
+// ------------------------------ Invoer -------------------------------
+const keys = {};
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space' || e.code === 'KeyE' || e.code === 'Enter') {
+    e.preventDefault();
+    if (state === 'playing') trySearch();
+    else if (e.code !== 'KeyE') {
+      if (state === 'menu') startGame();
+      else if (state === 'levelDone') startLevel(level + 1);
+      else if (state === 'gameOver') startGame();
+      else if (state === 'paused') resume();
+    }
+  }
+  if (e.code === 'Escape' || e.code === 'KeyP') { if (state === 'playing') pause(); else if (state === 'paused') resume(); }
+  if (e.code.startsWith('Arrow')) e.preventDefault();
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+
+const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
+canvas.addEventListener('pointerdown', e => {
+  ac();
+  if (state !== 'playing' || joy.id !== null) return;
+  joy.id = e.pointerId; joy.ox = joy.x = e.clientX; joy.oy = joy.y = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => { if (e.pointerId === joy.id) { joy.x = e.clientX; joy.y = e.clientY; } });
+const endJoy = e => { if (e.pointerId === joy.id) joy.id = null; };
+canvas.addEventListener('pointerup', endJoy);
+canvas.addEventListener('pointercancel', endJoy);
+
+function inputVector() {
+  let x = 0, y = 0;
+  if (keys.ArrowLeft || keys.KeyA) x -= 1;
+  if (keys.ArrowRight || keys.KeyD) x += 1;
+  if (keys.ArrowUp || keys.KeyW) y -= 1;
+  if (keys.ArrowDown || keys.KeyS) y += 1;
+  if (x || y) { const l = Math.hypot(x, y); return { x: x / l, y: y / l }; }
+  if (joy.id !== null) {
+    const dx = joy.x - joy.ox, dy = joy.y - joy.oy, l = Math.hypot(dx, dy);
+    if (l > 8) { const m = Math.min(1, l / 55); return { x: dx / l * m, y: dy / l * m }; }
+  }
+  return { x: 0, y: 0 };
+}
+
+$('btnSearch').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); trySearch(); });
+$('btnStart').onclick = () => { ac(); startGame(); };
+$('btnNext').onclick = () => startLevel(level + 1);
+$('btnRetry').onclick = () => startGame();
+$('btnMenu').onclick = toMenu;
+$('btnPause').onclick = () => pause();
+$('btnResume').onclick = () => resume();
+$('btnQuit').onclick = toMenu;
+$('btnMute').onclick = () => { muted = !muted; localStorage.setItem('snoepkat-muted', muted ? '1' : '0'); $('btnMute').textContent = muted ? '🔇' : '🔊'; };
+$('btnMute').textContent = muted ? '🔇' : '🔊';
+function pause() { if (state !== 'playing') return; state = 'paused'; joy.id = null; showOverlay('pause'); }
+function resume() { if (state !== 'paused') return; state = 'playing'; showOverlay(null); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+// ------------------------------ Update -------------------------------
+function update(dt) {
+  time += dt;
+  for (const f of floats) { f.life -= dt; f.y -= 40 * dt; }
+  floats = floats.filter(f => f.life > 0);
+  for (const p of particles) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 500 * dt; }
+  particles = particles.filter(p => p.life > 0);
+  for (const o of OBJECTS) if (o.shake > 0) o.shake -= dt;
+
+  if (state !== 'playing') return;
+
+  // tijd
+  if (levelEndTimer < 0) {
+    timeLeft -= dt;
+    const s = Math.ceil(timeLeft);
+    if (s < lastTick) { lastTick = s; if (s <= 10 && s > 0) sfx.tick(); }
+    if (timeLeft <= 0) { timeLeft = 0; gameOver(); return; }
+  } else {
+    levelEndTimer -= dt;
+    if (levelEndTimer <= 0) { levelComplete(); return; }
+  }
+
+  // kat
+  cat.stun = Math.max(0, cat.stun - dt);
+  cat.hurt = Math.max(0, cat.hurt - dt);
+  cat.carry = Math.max(0, cat.carry - dt);
+  cat.blink -= dt; if (cat.blink < -0.15) cat.blink = rand(2, 5);
+  if (cat.searching > 0) {
+    cat.searching -= dt;
+    if (cat.searching <= 0) { cat.searching = 0; reveal(cat.target); cat.target = null; }
+  }
+  const inp = (cat.stun > 0 || cat.searching > 0) ? { x: 0, y: 0 } : inputVector();
+  cat.moving = Math.abs(inp.x) + Math.abs(inp.y) > 0.05;
+  if (inp.x > 0.1) cat.face = 1; else if (inp.x < -0.1) cat.face = -1;
+  const k = Math.exp(-6 * dt);
+  cat.kx *= k; cat.ky *= k;
+  cat.x += (inp.x * CAT_SPEED + cat.kx) * dt; resolve(cat, CAT_R);
+  cat.y += (inp.y * CAT_SPEED + cat.ky) * dt; resolve(cat, CAT_R);
+  cat.x = clamp(cat.x, WALL + CAT_R, W - WALL - CAT_R); cat.y = clamp(cat.y, WALL + CAT_R, H - WALL - CAT_R);
+  cat.near = nearestObject();
+
+  // stofzuigrobots
+  for (const v of vacuums) {
+    v.spin += dt * 8;
+    const px = v.x, py = v.y;
+    v.x += Math.cos(v.a) * v.spd * dt; v.y += Math.sin(v.a) * v.spd * dt;
+    if (resolve(v, 22)) { v.x = px; v.y = py; v.a = rand(0, Math.PI * 2); }
+    else if (Math.random() < dt * 0.3) v.a += rand(-1, 1);
+    const dx = cat.x - v.x, dy = cat.y - v.y, d = Math.hypot(dx, dy) || 1;
+    if (d < 22 + CAT_R && cat.hurt <= 0) {
+      cat.hurt = 2; cat.stun = 0.6; cat.searching = 0; cat.target = null;
+      cat.kx = dx / d * 500; cat.ky = dy / d * 500;
+      timeLeft = Math.max(0, timeLeft - 5);
+      addFloat('Miauw! -5 sec', cat.x, cat.y - 45, '#ff7b7b', 22, 1.4);
+      sfx.hiss(); sfx.meow();
+    }
+  }
+  updateHud();
+}
+
+function levelComplete() {
+  state = 'levelDone';
+  const bonus = Math.ceil(timeLeft) * 10;
+  score += bonus;
+  saveHigh();
+  sfx.win();
+  $('ldTitle').textContent = `Level ${level} klaar!`;
+  $('ldCandies').textContent = OBJECTS.filter(o => o.result === 'candy').map(o => o.content.e).join(' ');
+  $('ldText').innerHTML = `Tijdbonus: <b>+${bonus}</b><br>Score: <b>${score}</b>`;
+  updateHud();
+  showOverlay('levelDone');
+}
+function gameOver() {
+  state = 'gameOver';
+  const isNew = saveHigh();
+  sfx.lose();
+  $('goText').innerHTML = `Je vond ${found} van de ${total} snoepjes in level ${level}.<br>Score: <b>${score}</b>`;
+  $('goHs').textContent = isNew ? '🏆 Nieuwe hoogste score!' : `🏆 Hoogste score: ${highscore}`;
+  updateHud();
+  showOverlay('gameOver');
+}
+function saveHigh() {
+  if (score > highscore) { highscore = score; localStorage.setItem('snoepkat-highscore', score); return true; }
+  return false;
+}
+
+let hudCache = '';
+function updateHud() {
+  const t = Math.ceil(timeLeft);
+  // neus-meter: hoe dichtbij is het dichtstbijzijnde verstopte snoepje?
+  let d = Infinity;
+  for (const o of OBJECTS) if (!o.searched && o.content && o.content.type === 'candy')
+    d = Math.min(d, distToRect(cat.x, cat.y, o));
+  const heat = d === Infinity ? 0 : clamp(1 - d / 650, 0, 1);
+  const label = d === Infinity ? '—' : heat > 0.88 ? 'HEET! 🔥' : heat > 0.65 ? 'Warm' : heat > 0.4 ? 'Lauw' : 'Koud ❄️';
+  const key = `${level}|${found}|${total}|${t}|${score}|${Math.round(heat * 50)}|${label}`;
+  if (key === hudCache) return; hudCache = key;
+  $('hLevel').textContent = level;
+  $('hCandy').textContent = `${found}/${total}`;
+  $('hTime').textContent = t;
+  $('hScore').textContent = score;
+  $('timePill').classList.toggle('warn', t <= 10 && state === 'playing');
+  $('noseCover').style.width = `${(1 - heat) * 100}%`;
+  $('noseText').textContent = label;
+  $('btnSearch').classList.toggle('ready', !!(cat.near && !cat.near.searched));
+}
+
+// ------------------------------ Tekenen ------------------------------
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.round(innerWidth * dpr); canvas.height = Math.round(innerHeight * dpr);
+  canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
+}
+addEventListener('resize', resize);
+resize();
+
+function updateCamera() {
+  const cw = innerWidth, ch = innerHeight;
+  view.s = Math.min(cw / (ch > cw ? 520 : 820), ch / 580);
+  const vw = cw / view.s, vh = ch / view.s;
+  const fx = state === 'menu' ? W / 2 : cat.x, fy = state === 'menu' ? H / 2 : cat.y;
+  const tx = vw >= W ? (W - vw) / 2 : clamp(fx - vw / 2, 0, W - vw);
+  const ty = vh >= H ? (H - vh) / 2 : clamp(fy - vh / 2, -60 / view.s, H - vh);
+  view.x += (tx - view.x) * 0.15; view.y += (ty - view.y) * 0.15;
+  if (!view.init) { view.x = tx; view.y = ty; view.init = true; }
+}
+
+function drawObject(o) {
+  let ox = 0, oy = 0;
+  if (o.shake > 0) { ox = Math.sin(time * 60) * 4; oy = Math.cos(time * 45) * 2; }
+  const x = o.x + ox, y = o.y + oy;
+  // schaduw
+  ctx.fillStyle = 'rgba(0,0,0,.22)'; rrect(x + 4, y + 7, o.w, o.h, 12); ctx.fill();
+  // lichaam
+  ctx.fillStyle = o.c; rrect(x, y, o.w, o.h, 12); ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = shade(o.c, -55); ctx.stroke();
+  ctx.fillStyle = shade(o.c, 30); rrect(x + 5, y + 4, o.w - 10, Math.min(14, o.h * 0.25), 6); ctx.fill();
+  // icoon
+  const size = Math.min(44, Math.min(o.w, o.h) * 0.72);
+  ctx.font = `${size}px ${EMOJI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.globalAlpha = o.searched ? 0.45 : 1;
+  ctx.fillText(o.e, x + o.w / 2, y + o.h / 2 + 2);
+  ctx.globalAlpha = 1;
+  // markering als je hier al gezocht hebt
+  if (o.searched) {
+    const bx = x + o.w - 4, by = y + 4;
+    ctx.fillStyle = o.result === 'candy' ? '#2ecc71' : o.result === 'clock' ? '#3498db' : o.result === 'spider' ? '#e74c3c' : '#95a5a6';
+    ctx.beginPath(); ctx.arc(bx, by, 11, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(o.result === 'candy' ? '✓' : o.result === 'empty' ? '✗' : '!', bx, by + 1);
+  }
+  // glow als de kat ernaast staat
+  if (state === 'playing' && cat.near === o && !o.searched && cat.searching <= 0) {
+    ctx.strokeStyle = `rgba(255,224,102,${0.6 + Math.sin(time * 8) * 0.4})`; ctx.lineWidth = 5;
+    rrect(x - 4, y - 4, o.w + 8, o.h + 8, 15); ctx.stroke();
+    const by = y - 22 + Math.sin(time * 6) * 4, bx = x + o.w / 2;
+    ctx.fillStyle = '#fff'; rrect(bx - 20, by - 15, 40, 28, 12); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(bx - 6, by + 12); ctx.lineTo(bx + 6, by + 12); ctx.lineTo(bx, by + 19); ctx.fill();
+    ctx.font = `18px ${EMOJI_FONT}`; ctx.fillText('🐾', bx, by);
+  }
+}
+
+function drawCat() {
+  const moving = cat.moving;
+  ctx.save();
+  ctx.translate(cat.x, cat.y);
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, 15, 22, 7, 0, 0, 7); ctx.fill();
+  if (cat.hurt > 0 && Math.floor(time * 12) % 2) ctx.globalAlpha = 0.4;
+  let bob = moving ? Math.abs(Math.sin(time * 14)) * -3 : 0;
+  if (cat.stun > 0) bob = -Math.abs(Math.sin(time * 20)) * 6;
+  ctx.translate(0, bob);
+  ctx.scale(cat.face * 1.25, 1.25);
+  const orange = '#f29b38', dark = '#c8701e';
+  // staart
+  const wag = Math.sin(time * (moving ? 10 : 3)) * 5;
+  ctx.strokeStyle = orange; ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-14, 0); ctx.quadraticCurveTo(-30, -2, -26 + wag * 0.3, -20 + wag); ctx.stroke();
+  ctx.strokeStyle = dark; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(-26 + wag * 0.3 - 1, -16 + wag); ctx.lineTo(-26 + wag * 0.3, -20 + wag); ctx.stroke();
+  // pootjes
+  const step = moving ? Math.sin(time * 14) * 4 : 0;
+  const dig = cat.searching > 0 ? Math.sin(time * 40) * 5 : 0;
+  ctx.fillStyle = dark;
+  [[-10, step], [-3, -step], [5, -step], [12, step + dig]].forEach(([lx, s]) => { rrect(lx - 3 + s * 0.3, 4, 6, 10 - Math.abs(s) * 0.3, 3); ctx.fill(); });
+  // lijf
+  ctx.fillStyle = orange; ctx.beginPath(); ctx.ellipse(0, 0, 18, 11, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = dark; ctx.lineWidth = 3;
+  for (const sx of [-8, -2, 4]) { ctx.beginPath(); ctx.moveTo(sx, -10); ctx.lineTo(sx - 2, -3); ctx.stroke(); }
+  ctx.fillStyle = '#fff3e3'; ctx.beginPath(); ctx.ellipse(4, 5, 9, 5, 0, 0, 7); ctx.fill();
+  // hoofd
+  const hx = 15, hy = -11 + (cat.searching > 0 ? 5 : 0);
+  ctx.fillStyle = orange;
+  ctx.beginPath(); ctx.moveTo(hx - 10, hy - 4); ctx.lineTo(hx - 9, hy - 17); ctx.lineTo(hx - 2, hy - 9); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hx + 10, hy - 4); ctx.lineTo(hx + 9, hy - 17); ctx.lineTo(hx + 2, hy - 9); ctx.fill();
+  ctx.fillStyle = '#f7b6c2';
+  ctx.beginPath(); ctx.moveTo(hx - 8, hy - 7); ctx.lineTo(hx - 8, hy - 13); ctx.lineTo(hx - 4, hy - 9); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hx + 8, hy - 7); ctx.lineTo(hx + 8, hy - 13); ctx.lineTo(hx + 4, hy - 9); ctx.fill();
+  ctx.fillStyle = orange; ctx.beginPath(); ctx.arc(hx, hy, 11, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff3e3'; ctx.beginPath(); ctx.ellipse(hx, hy + 5, 6, 4, 0, 0, 7); ctx.fill();
+  // ogen
+  ctx.fillStyle = '#2b1d3a';
+  if (cat.stun > 0) {
+    ctx.strokeStyle = '#2b1d3a'; ctx.lineWidth = 1.5;
+    for (const ex of [hx - 4.5, hx + 4.5]) { ctx.beginPath(); ctx.moveTo(ex - 2, hy - 3); ctx.lineTo(ex + 2, hy + 1); ctx.moveTo(ex + 2, hy - 3); ctx.lineTo(ex - 2, hy + 1); ctx.stroke(); }
+  } else if (cat.blink < 0 || cat.carry > 0) {
+    ctx.strokeStyle = '#2b1d3a'; ctx.lineWidth = 1.5;
+    for (const ex of [hx - 4.5, hx + 4.5]) { ctx.beginPath(); ctx.arc(ex, hy, 2.5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+  } else {
+    for (const ex of [hx - 4.5, hx + 4.5]) { ctx.beginPath(); ctx.ellipse(ex, hy - 1, 2.2, 3, 0, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#fff'; for (const ex of [hx - 4, hx + 5]) { ctx.beginPath(); ctx.arc(ex, hy - 2, 0.9, 0, 7); ctx.fill(); }
+  }
+  // neus, mond, snorharen
+  ctx.fillStyle = '#e86a8a'; ctx.beginPath(); ctx.moveTo(hx - 1.6, hy + 3); ctx.lineTo(hx + 1.6, hy + 3); ctx.lineTo(hx, hy + 5); ctx.fill();
+  ctx.strokeStyle = '#2b1d3a'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(hx, hy + 5); ctx.quadraticCurveTo(hx - 2, hy + 7.5, hx - 3.5, hy + 6); ctx.moveTo(hx, hy + 5); ctx.quadraticCurveTo(hx + 2, hy + 7.5, hx + 3.5, hy + 6); ctx.stroke();
+  ctx.strokeStyle = 'rgba(43,29,58,.6)';
+  ctx.beginPath();
+  ctx.moveTo(hx - 6, hy + 4); ctx.lineTo(hx - 15, hy + 2); ctx.moveTo(hx - 6, hy + 5); ctx.lineTo(hx - 15, hy + 7);
+  ctx.moveTo(hx + 6, hy + 4); ctx.lineTo(hx + 15, hy + 2); ctx.moveTo(hx + 6, hy + 5); ctx.lineTo(hx + 15, hy + 7);
+  ctx.stroke();
+  ctx.restore();
+  // stofwolkjes tijdens het snuffelen, sterretjes bij schrik
+  if (cat.searching > 0) {
+    ctx.fillStyle = 'rgba(255,255,255,.7)';
+    for (let i = 0; i < 4; i++) {
+      const a = time * 6 + i * 1.6;
+      ctx.beginPath(); ctx.arc(cat.x + cat.face * 28 + Math.cos(a) * 10, cat.y - 4 + Math.sin(a) * 6, 4 + (i % 2) * 2, 0, 7); ctx.fill();
+    }
+  }
+  if (cat.stun > 0) {
+    ctx.font = `14px ${EMOJI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; ctx.fillText('⭐', cat.x + Math.cos(a) * 18, cat.y - 38 + Math.sin(a) * 5); }
+  }
+}
+
+function drawVacuum(v) {
+  ctx.save(); ctx.translate(v.x, v.y);
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(2, 6, 24, 20, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#3d4450'; ctx.beginPath(); ctx.arc(0, 0, 22, 0, 7); ctx.fill();
+  ctx.fillStyle = '#6b7685'; ctx.beginPath(); ctx.arc(0, -2, 17, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#cfd6df'; ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) { const a = v.spin + i * 2.09; ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(Math.cos(a) * 12, -2 + Math.sin(a) * 12); ctx.stroke(); }
+  ctx.fillStyle = Math.floor(time * 3) % 2 ? '#ff4d4d' : '#4dff88';
+  ctx.beginPath(); ctx.arc(Math.cos(v.a) * 14, Math.sin(v.a) * 14 - 2, 3.5, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+function render() {
+  const dpr = canvas.width / innerWidth;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#2b1d3a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  updateCamera();
+  const s = view.s * dpr;
+  ctx.setTransform(s, 0, 0, s, -view.x * s, -view.y * s);
+  ctx.drawImage(floor, 0, 0);
+
+  // alles sorteren op diepte (y) zodat het mooi overlapt
+  const list = OBJECTS.map(o => ({ y: o.y + o.h, d: () => drawObject(o) }));
+  if (state !== 'menu') {
+    list.push({ y: cat.y + 14, d: drawCat });
+    for (const v of vacuums) list.push({ y: v.y + 20, d: () => drawVacuum(v) });
+  }
+  list.sort((a, b) => a.y - b.y).forEach(i => i.d());
+
+  for (const p of particles) {
+    ctx.globalAlpha = clamp(p.life, 0, 1); ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const f of floats) {
+    const a = clamp(f.life / f.max * 2.5, 0, 1), pop = 1 + Math.max(0, f.life - f.max + 0.2) * 2;
+    ctx.globalAlpha = a;
+    ctx.font = `bold ${f.size * pop}px "Trebuchet MS", "Segoe UI", Arial, sans-serif`;
+    ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(43,29,58,.85)'; ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // joystick (schermcoördinaten)
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (joy.id !== null && state === 'playing') {
+    let dx = joy.x - joy.ox, dy = joy.y - joy.oy; const l = Math.hypot(dx, dy);
+    if (l > 55) { dx = dx / l * 55; dy = dy / l * 55; }
+    ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(joy.ox, joy.oy, 55, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(joy.ox + dx, joy.oy + dy, 24, 0, 7); ctx.fill();
+  }
+}
+
+// ------------------------------ Lus ----------------------------------
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+toMenu();
+requestAnimationFrame(loop);
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
